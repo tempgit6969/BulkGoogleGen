@@ -38,6 +38,7 @@ def create_user(service, user_info):
             "familyName": "User"
         },
         "password": password,
+        "changePasswordAtNextLogin": True
     }
     result = service.users().insert(body=user).execute()
     return result['primaryEmail'], password
