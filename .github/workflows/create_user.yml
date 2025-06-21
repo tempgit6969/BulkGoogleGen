@@ -1,0 +1,35 @@
+# .github/workflows/create_user.yml
+
+name: Create Workspace User from TXT
+
+on:
+  push:
+    paths:
+      - 'requests/*.txt'
+
+jobs:
+  create-user:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install google-api-python-client google-auth google-auth-oauthlib
+
+      - name: Process new TXT file
+        run: |
+          txt_file=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '.txt$' | head -n 1)
+          echo "TXT_FILE=$txt_file" >> $GITHUB_ENV
+          python create_user_from_txt.py
+        env:
+          CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
+          TOKEN_JSON: ${{ secrets.TOKEN_JSON }}
+          EMAIL_SMTP_USER: ${{ secrets.EMAIL_SMTP_USER }}
+          EMAIL_SMTP_PASS: ${{ secrets.EMAIL_SMTP_PASS }}
