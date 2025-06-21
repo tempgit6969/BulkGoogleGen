@@ -23,11 +23,14 @@ jobs:
         run: |
           pip install google-api-python-client google-auth google-auth-oauthlib
 
-      - name: Process new TXT file
+      - name: Detect new TXT file
+        id: detect
         run: |
-          txt_file=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '.txt$' | head -n 1)
+          txt_file=$(git diff --name-only HEAD^ HEAD | grep '^requests/.*\.txt$' | head -n 1)
           echo "TXT_FILE=$txt_file" >> $GITHUB_ENV
-          python create_user_from_txt.py
+
+      - name: Process TXT file and create user
+        run: python create_user_from_txt.py
         env:
           CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
           TOKEN_JSON: ${{ secrets.TOKEN_JSON }}
