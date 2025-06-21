@@ -1,3 +1,3 @@
 EmailToSendCred: 2tbmagic@gmail.com
-primaryEmail: new.user@sahkcfbahcw.work.gd
+primaryEmail: test.user@sahkcfbahcw.work.gd
 givenName: NewUser
