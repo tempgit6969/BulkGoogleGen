@@ -68,6 +68,9 @@ def send_email(to, username, password, given_name):
 
 def main():
     file_path = os.getenv('TXT_FILE')
+    if not file_path or not os.path.exists(file_path):
+        print(f"[ERROR] No TXT file found at: {file_path}")
+        return
     user_info = parse_txt(file_path)
     creds = load_creds()
     service = build('admin', 'directory_v1', credentials=creds)
