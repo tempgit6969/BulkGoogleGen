@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activate Your Google Account</title>
+    <title>Your Google Account is Ready</title>
     <style>
         body {
             font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
@@ -37,14 +37,25 @@
         .content p {
             margin-bottom: 1em;
         }
-        .username {
+        .code-block {
             background-color: #e8f0fe;
-            padding: 10px;
+            padding: 20px;
             border-radius: 4px;
-            font-weight: bold;
             text-align: center;
             font-size: 18px;
             color: #174ea6;
+        }
+        .code-block .label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        .code-block .code {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 24px;
+            letter-spacing: 2px;
         }
         .steps ol {
             padding-left: 20px;
@@ -76,29 +87,32 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Welcome to Google Workspace</h1>
+            <h1>Your Google Account is Ready</h1>
         </div>
         <div class="content">
             <p>Hello ${givenName},</p>
-            <p>Your new Google Workspace account has been created. Your username is:</p>
-            <div class="username">${username}</div>
-            <p style="margin-top: 20px;">To secure your account, you will now set your own password by following the official Google account recovery process.</p>
+            <p>Your new Google Workspace account has been created. To sign in for the first time and set your permanent password, please use the one-time verification code below.</p>
             
+            <div class="code-block">
+                <span class="label">Your One-Time Password:</span>
+                <span class="code">${verification_code}</span>
+            </div>
+
             <div class="steps">
-                <h3>Please follow these steps:</h3>
+                <h3 style="margin-top: 30px;">Your simple 3-step activation:</h3>
                 <ol>
-                    <li>Click the button below to go to the Google Account Recovery page.</li>
-                    <li>Enter your new username (<strong>${username}</strong>) and click Next.</li>
-                    <li>Follow the on-screen instructions. Google will send a verification code to your recovery address to confirm your identity.</li>
-                    <li>Enter the code to create your new, secure password.</li>
+                    <li>Click the button below. Your email address will be filled in for you.</li>
+                    <li>Click <strong>Next</strong>.</li>
+                    <li>When asked for the password, paste the <strong>one-time password</strong> from this email. You will then create your own permanent password.</li>
                 </ol>
             </div>
         </div>
         <div class="button-container">
-            <a href="https://accounts.google.com/signin/recovery" class="button">Set Your Password</a>
+            <!-- THIS IS THE NEW SMART LINK -->
+            <a href="https://accounts.google.com/signin/v2/identifier?flowName=GlifWebSignIn&flowEntry=ServiceLogin&identifier=${username}" class="button">Sign In & Set Your Password</a>
         </div>
         <div class="footer">
-            <p>If you did not expect this email, please disregard it.</p>
+            <p>This one-time code is valid for 48 hours. If you did not expect this email, please disregard it.</p>
         </div>
     </div>
 </body>
