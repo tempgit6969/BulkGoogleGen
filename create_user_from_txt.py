@@ -3,6 +3,8 @@ import os
 import json
 import logging
 import time
+import random
+import string
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -63,7 +65,7 @@ def parse_txt(file_path):
         return None
 
 def create_user(service, user_info):
-    """Create Google Workspace user and trigger official reset email."""
+    """Create Google Workspace user and return credentials."""
     # Validate required fields
     required_fields = ['primaryEmail', 'givenName', 'familyName']
     if not all(field in user_info for field in required_fields):
@@ -103,8 +105,8 @@ def create_user(service, user_info):
         logger.error(f"Unexpected error creating user: {e}")
         return None, None
 
-def send_custom_welcome_email(primary_email, given_name, temp_password=None):
-    """Send welcome email with instructions."""
+def send_custom_welcome_email(to_email, primary_email, given_name, temp_password=None):
+    """Send welcome email with instructions to specified email address."""
     try:
         # Determine template based on whether we have temp password
         template_file = 'templates/welcome_email_template.html'
@@ -116,7 +118,10 @@ def send_custom_welcome_email(primary_email, given_name, temp_password=None):
             html_template = f.read()
         
         # Personalize content
-        html_content = html_template.replace('${givenName}', given_name)
+        html_content = html_template \
+            .replace('${givenName}', given_name) \
+            .replace('${primaryEmail}', primary_email)
+        
         if temp_password:
             html_content = html_content.replace('${tempPassword}', temp_password)
         
@@ -126,37 +131,45 @@ def send_custom_welcome_email(primary_email, given_name, temp_password=None):
         
         # Create email
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = 'Your Google Workspace Account Setup'
+        msg['Subject'] = 'Your Google Workspace Account Setup Instructions'
         msg['From'] = smtp_user
-        msg['To'] = primary_email
+        msg['To'] = to_email
         msg.attach(MIMEText(html_content, 'html'))
         
         # Send email
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(smtp_user, smtp_pass)
-            server.sendmail(smtp_user, primary_email, msg.as_string())
+            server.sendmail(smtp_user, to_email, msg.as_string())
         
-        logger.info(f"Sent welcome instructions to {primary_email}")
+        logger.info(f"Sent welcome instructions to {to_email}")
+        return True
     except FileNotFoundError:
-        logger.error("Email template not found")
+        logger.error(f"Email template not found: {template_file}")
+        return False
     except KeyError:
         logger.warning("SMTP credentials not set - skipping email")
+        return False
     except Exception as e:
         logger.error(f"Error sending welcome email: {e}")
+        return False
 
 def trigger_password_reset(service, email):
     """Trigger Google's official password reset email."""
     try:
         logger.info(f"Triggering password reset for: {email}")
+        # Temporarily make user admin to trigger reset
         service.users().makeAdmin(
             userKey=email,
             body={"status": True}
-        )
+        ).execute()
         time.sleep(2)  # Short delay
+        
+        # Remove admin privileges
         service.users().makeAdmin(
             userKey=email,
             body={"status": False}
-        )
+        ).execute()
+        
         logger.info("Password reset triggered successfully")
         return True
     except HttpError as e:
@@ -191,18 +204,35 @@ def main():
         primary_email, temp_password = create_user(service, user_info)
         
         if primary_email:
+            # Get the notification email address from TXT file
+            notification_email = user_info.get('EmailToSendCred')
+            given_name = user_info.get('givenName', 'User')
+            
+            if not notification_email:
+                logger.error("'EmailToSendCred' not found in TXT file")
+                return
+            
             # Try to trigger official Google reset
-            if trigger_password_reset(service, primary_email):
+            reset_success = trigger_password_reset(service, primary_email)
+            
+            # Send appropriate email based on reset success
+            if reset_success:
                 # Official reset succeeded - send standard welcome
-                send_custom_welcome_email(primary_email, user_info.get('givenName', 'there'))
+                send_custom_welcome_email(
+                    notification_email,
+                    primary_email,
+                    given_name
+                )
             else:
                 # Fallback to temporary password
                 logger.warning("Using fallback method with temporary password")
                 send_custom_welcome_email(
+                    notification_email,
                     primary_email,
-                    user_info.get('givenName', 'there'),
+                    given_name,
                     temp_password
                 )
+            
             logger.info(f"Provisioning completed for {primary_email}")
         else:
             logger.error("User creation failed - no further actions")
@@ -213,6 +243,4 @@ def main():
         logger.info("--- Process Completed ---")
 
 if __name__ == "__main__":
-    import string
-    import random
     main()
