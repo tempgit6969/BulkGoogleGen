@@ -1,4 +1,4 @@
-# create_user_from_txt.py (Final with Verification Code)
+# create_user_from_txt.py (Final Version)
 
 import os
 import json
@@ -31,8 +31,8 @@ def load_creds():
             creds.refresh(Request())
         
         return creds
-    except KeyError as e:
-        print(f"[ERROR] Missing environment variable: {e}")
+    except KeyError:
+        print("[ERROR] 'TOKEN_JSON' environment variable not set.")
         return None
     except json.JSONDecodeError:
         print("[ERROR] 'TOKEN_JSON' contains invalid JSON.")
@@ -54,12 +54,13 @@ def parse_txt(file_path):
         return None
     return fields
 
-def create_user_and_get_verification_code(service, user_info):
+def create_user(service, user_info):
     """
-    Creates a user, then immediately generates a verification code for first-time login.
+    Creates a new Google Workspace user.
+    The password generated here is a placeholder to satisfy the API and is never used.
     """
-    # --- Step 1: Create the user ---
     placeholder_password = generate_password()
+    
     user_body = {
         "primaryEmail": user_info.get('primaryEmail'),
         "name": {
@@ -77,61 +78,45 @@ def create_user_and_get_verification_code(service, user_info):
     
     if not all(user_body_cleaned.get(key) for key in ['primaryEmail', 'name']):
         print("[ERROR] Missing essential user information. Cannot create user.")
-        return None, None
+        return None
 
     try:
         print(f"Attempting to create user: {user_body_cleaned.get('primaryEmail')}...")
-        user_result = service.users().insert(body=user_body_cleaned).execute()
-        new_user_email = user_result['primaryEmail']
-        print(f"Successfully created user: {new_user_email}")
+        result = service.users().insert(body=user_body_cleaned).execute()
+        print(f"Successfully created user: {result['primaryEmail']}")
+        # We only return the username, as the password is not to be used.
+        return result['primaryEmail']
     except HttpError as e:
         print(f"[ERROR] Failed to create user. API returned an error: {e}")
-        return None, None
+        return None
 
-    # --- Step 2: Generate a verification code for the new user ---
-    try:
-        print(f"Generating verification code for {new_user_email}...")
-        codes_result = service.verificationCodes().list(userKey=new_user_email).execute()
-        
-        if 'items' in codes_result and len(codes_result['items']) > 0:
-            verification_code = codes_result['items'][0]['verificationCode']
-            print(f"Successfully generated verification code: {verification_code}")
-            return new_user_email, verification_code
-        else:
-            print("[ERROR] No verification codes were returned for the new user.")
-            return new_user_email, None # Return email so we know user was created
-            
-    except HttpError as e:
-        print(f"[ERROR] Failed to generate verification code. API returned an error: {e}")
-        return new_user_email, None
-
-
-def send_verification_email(to, username, given_name, verification_code):
-    """Sends an email with the username and one-time verification code."""
+def send_activation_email(to, username, given_name):
+    """Sends an email with instructions for the user to set their own password."""
+    # Note: This function no longer accepts a 'password' argument.
     html_content = load_email_template('templates/email_template.html', {
         'username': username,
-        'givenName': given_name,
-        'verification_code': verification_code
+        'givenName': given_name
     })
 
     if not html_content:
-        return # Error handled in load_email_template
+        print("[INFO] Could not load email template. Skipping email notification.")
+        return
 
     try:
         smtp_user = os.environ['EMAIL_SMTP_USER']
         smtp_pass = os.environ['EMAIL_SMTP_PASS']
     except KeyError as e:
-        print(f"[ERROR] Missing SMTP environment variable: {e}. Skipping email.")
+        print(f"[ERROR] Missing environment variable for sending email: {e}. Skipping email.")
         return
 
     msg = MIMEMultipart('alternative')
-    msg['Subject'] = 'Your New Google Workspace Account is Ready'
+    msg['Subject'] = 'Activate Your New Google Workspace Account'
     msg['From'] = smtp_user
     msg['To'] = to
     msg.attach(MIMEText(html_content, 'html'))
 
     try:
-        print(f"Sending verification code to {to}...")
+        print(f"Sending activation instructions to {to}...")
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
         server.login(smtp_user, smtp_pass)
         server.send_message(msg)
@@ -151,13 +136,13 @@ def load_email_template(filepath, values):
         return None
 
 def main():
-    """Main function to orchestrate the user creation and notification process."""
+    """Main function to orchestrate the user creation process."""
     file_path = os.getenv('TXT_FILE')
     if not file_path:
         print("[ERROR] Environment variable 'TXT_FILE' is not set.")
         return
     
-    print("--- Starting User Creation Script (Verification Code Flow) ---")
+    print("--- Starting User Creation Script (Secure Activation Flow) ---")
     user_info = parse_txt(file_path)
     if not user_info:
         return
@@ -168,19 +153,17 @@ def main():
 
     try:
         service = build('admin', 'directory_v1', credentials=creds)
-        username, verification_code = create_user_and_get_verification_code(service, user_info)
+        username = create_user(service, user_info)
         
-        if username and verification_code:
+        if username:
             send_to_email = user_info.get('EmailToSendCred')
             given_name = user_info.get('givenName')
             if send_to_email and given_name:
-                send_verification_email(send_to_email, username, given_name, verification_code)
+                send_activation_email(send_to_email, username, given_name)
             else:
-                print("[WARN] 'EmailToSendCred' or 'givenName' not found. Cannot send email.")
-        elif username and not verification_code:
-             print(f"[ERROR] User {username} was created, but no verification code could be generated. Please reset their password manually in the Admin Console.")
+                print("[WARN] 'EmailToSendCred' or 'givenName' not found in TXT file. Cannot send activation email.")
         else:
-            print("[INFO] User creation failed. No email sent.")
+            print("[INFO] User creation failed. No activation email sent.")
     except Exception as e:
         print(f"[FATAL_ERROR] An unexpected error occurred: {e}")
     
