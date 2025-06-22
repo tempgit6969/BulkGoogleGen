@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Google Workspace</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f8fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .welcome-text {
+            margin-bottom: 25px;
+        }
+        
+        .welcome-text h2 {
+            color: #1a73e8;
+            margin-bottom: 15px;
+            font-size: 22px;
+        }
+        
+        .steps {
+            background: #f8f9fa;
+            border-left: 4px solid #4285f4;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .steps h3 {
+            margin-bottom: 15px;
+            color: #202124;
+        }
+        
+        .step {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: flex-start;
+        }
+        
+        .step-number {
+            background: #4285f4;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+            font-weight: bold;
+        }
+        
+        .cta-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: #1a73e8;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 25px 0;
+            transition: background 0.3s;
+        }
+        
+        .cta-button:hover {
+            background: #0d62c9;
+        }
+        
+        .support-section {
+            margin-top: 35px;
+            padding-top: 25px;
+            border-top: 1px solid #e8eaed;
+        }
+        
+        .support-section h3 {
+            color: #5f6368;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .support-options {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .support-card {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .support-card h4 {
+            color: #1a73e8;
+            margin-bottom: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #5f6368;
+            font-size: 14px;
+            background: #f8f9fa;
+        }
+        
+        @media (max-width: 600px) {
+            .content {
+                padding: 25px;
+            }
+            
+            .support-options {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>Welcome to Google Workspace</h1>
+            <p>Your account is ready for setup</p>
+        </div>
+        
+        <div class="content">
+            <div class="welcome-text">
+                <h2>Hello ${givenName},</h2>
+                <p>Your Google Workspace account has been successfully created! You now have access to our professional collaboration tools including Gmail, Drive, Calendar, and Meet.</p>
+            </div>
+            
+            <div class="steps">
+                <h3>To complete your setup:</h3>
+                
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div>
+                        <strong>Check your inbox</strong>
+                        <p>Look for an email from Google with the subject "Welcome to Google Workspace"</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div>
+                        <strong>Accept the invitation</strong>
+                        <p>Click the "Accept invitation" button in that email</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div>
+                        <strong>Set up your account</strong>
+                        <p>Follow the instructions to create your password</p>
+                    </div>
+                </div>
+            </div>
+            
+            <a href="https://accounts.google.com" class="cta-button">Access Your Account</a>
+            
+            <div class="support-section">
+                <h3>Need assistance?</h3>
+                <p>We're here to help you get started:</p>
+                
+                <div class="support-options">
+                    <div class="support-card">
+                        <h4>Check First</h4>
+                        <p>Look in your spam/junk folder if you don't see Google's email</p>
+                    </div>
+                    
+                    <div class="support-card">
+                        <h4>Email Support</h4>
+                        <p>it-support@yourcompany.com</p>
+                    </div>
+                    
+                    <div class="support-card">
+                        <h4>Phone Support</h4>
+                        <p>(555) 123-4567<br>Mon-Fri, 9AM-5PM EST</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This email was sent to you by the IT Department</p>
+            <p>&copy; 2025 Your Company Name. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
