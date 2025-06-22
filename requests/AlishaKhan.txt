@@ -21,7 +21,7 @@ EmailToSendCred: 2tbmagic@gmail.com
 recoveryEmail: 2tbmagic@gmail.com
 
 // recoveryPhone: A phone number for account recovery. MUST be in E.164 format (e.g., +[CountryCode][Number]).
-recoveryPhone: +14155552671
+recoveryPhone: +14155552672
 
 // OPTIONAL FIELDS:
 // ----------------
