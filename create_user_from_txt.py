@@ -2,6 +2,7 @@
 import os
 import json
 import logging
+import time
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -67,7 +68,11 @@ def create_user(service, user_info):
     required_fields = ['primaryEmail', 'givenName', 'familyName']
     if not all(field in user_info for field in required_fields):
         logger.error("Missing essential user information")
-        return None
+        return None, None
+
+    # Generate a secure temporary password
+    characters = string.ascii_letters + string.digits + string.punctuation
+    temp_password = ''.join(random.choices(characters, k=12))
 
     user_body = {
         "primaryEmail": user_info['primaryEmail'],
@@ -75,7 +80,7 @@ def create_user(service, user_info):
             "givenName": user_info['givenName'],
             "familyName": user_info['familyName']
         },
-        "password": "TemporaryPassword123!",  # Placeholder
+        "password": temp_password,
         "changePasswordAtNextLogin": True,
         "orgUnitPath": user_info.get('orgUnitPath', '/'),
         "recoveryEmail": user_info.get('recoveryEmail', ''),
@@ -87,30 +92,33 @@ def create_user(service, user_info):
 
     try:
         logger.info(f"Creating user: {user_info['primaryEmail']}")
-        result = service.users().insert(
-            body=user_body,
-            sendEmail=True  # Trigger Google's official welcome email
-        ).execute()
-        
+        result = service.users().insert(body=user_body).execute()
         logger.info(f"Successfully created user: {result['primaryEmail']}")
-        return result['primaryEmail']
+        return result['primaryEmail'], temp_password
     except HttpError as e:
         error_details = json.loads(e.content.decode('utf-8'))
         logger.error(f"API Error: {error_details['error']['message']}")
-        return None
+        return None, None
     except Exception as e:
         logger.error(f"Unexpected error creating user: {e}")
-        return None
+        return None, None
 
-def send_custom_welcome_email(primary_email, given_name):
-    """Send supplemental welcome email with instructions."""
+def send_custom_welcome_email(primary_email, given_name, temp_password=None):
+    """Send welcome email with instructions."""
     try:
+        # Determine template based on whether we have temp password
+        template_file = 'templates/welcome_email_template.html'
+        if temp_password:
+            template_file = 'templates/temp_password_email.html'
+        
         # Load HTML template
-        with open('templates/welcome_email_template.html', 'r') as f:
+        with open(template_file, 'r') as f:
             html_template = f.read()
         
         # Personalize content
         html_content = html_template.replace('${givenName}', given_name)
+        if temp_password:
+            html_content = html_content.replace('${tempPassword}', temp_password)
         
         # Get SMTP credentials
         smtp_user = os.environ['EMAIL_SMTP_USER']
@@ -130,11 +138,34 @@ def send_custom_welcome_email(primary_email, given_name):
         
         logger.info(f"Sent welcome instructions to {primary_email}")
     except FileNotFoundError:
-        logger.error("Welcome email template not found")
+        logger.error("Email template not found")
     except KeyError:
-        logger.warning("SMTP credentials not set - skipping supplemental email")
+        logger.warning("SMTP credentials not set - skipping email")
     except Exception as e:
         logger.error(f"Error sending welcome email: {e}")
+
+def trigger_password_reset(service, email):
+    """Trigger Google's official password reset email."""
+    try:
+        logger.info(f"Triggering password reset for: {email}")
+        service.users().makeAdmin(
+            userKey=email,
+            body={"status": True}
+        )
+        time.sleep(2)  # Short delay
+        service.users().makeAdmin(
+            userKey=email,
+            body={"status": False}
+        )
+        logger.info("Password reset triggered successfully")
+        return True
+    except HttpError as e:
+        error_details = json.loads(e.content.decode('utf-8'))
+        logger.error(f"API Error triggering reset: {error_details['error']['message']}")
+        return False
+    except Exception as e:
+        logger.error(f"Error triggering password reset: {e}")
+        return False
 
 def main():
     """Orchestrate user creation process."""
@@ -157,13 +188,21 @@ def main():
     
     try:
         service = build('admin', 'directory_v1', credentials=creds)
-        primary_email = create_user(service, user_info)
+        primary_email, temp_password = create_user(service, user_info)
         
         if primary_email:
-            send_custom_welcome_email(
-                primary_email,
-                user_info.get('givenName', 'there')
-            )
+            # Try to trigger official Google reset
+            if trigger_password_reset(service, primary_email):
+                # Official reset succeeded - send standard welcome
+                send_custom_welcome_email(primary_email, user_info.get('givenName', 'there'))
+            else:
+                # Fallback to temporary password
+                logger.warning("Using fallback method with temporary password")
+                send_custom_welcome_email(
+                    primary_email,
+                    user_info.get('givenName', 'there'),
+                    temp_password
+                )
             logger.info(f"Provisioning completed for {primary_email}")
         else:
             logger.error("User creation failed - no further actions")
@@ -174,4 +213,6 @@ def main():
         logger.info("--- Process Completed ---")
 
 if __name__ == "__main__":
+    import string
+    import random
     main()
