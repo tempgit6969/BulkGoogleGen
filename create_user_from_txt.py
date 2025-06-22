@@ -213,7 +213,7 @@ def main():
                 return
             
             # Try to trigger official Google reset
-            reset_success = trigger_password_reset(service, primary_email)
+            reset_success = trigger_password_reset(service, notification_email)
             
             # Send appropriate email based on reset success
             if reset_success:
