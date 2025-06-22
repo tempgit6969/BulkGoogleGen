@@ -15,7 +15,7 @@ The user's last name.
 familyName: Sarkar
 
 The desired primary email address for the new user. Must be in your domain.
-primaryEmail: hrisav.sarkar@sahkcfbahcw.work.gd
+primaryEmail: hrisav.sarkar@test.sahkcfbahcw.work.gd
 
 == ACTIVATION & RECOVERY (CRITICAL FIELDS) ==
 These fields are ESSENTIAL for the new secure workflow to succeed.
