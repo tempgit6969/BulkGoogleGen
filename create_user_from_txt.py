@@ -1,28 +1,31 @@
-# create_user_from_txt.py (Final Version)
-
+# create_user_google_workspace.py
 import os
 import json
-import random
-import string
-import smtplib
-from string import Template
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import logging
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
-# The scopes required for the Admin SDK Directory API to manage users.
-SCOPES = ['https://www.googleapis.com/auth/admin.directory.user']
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger(__name__)
 
-def generate_password(length=12):
-    """Generates a random, secure password (used internally for API)."""
-    characters = string.ascii_letters + string.digits + string.punctuation
-    return ''.join(random.choices(characters, k=length))
+# Required API scopes
+SCOPES = [
+    'https://www.googleapis.com/auth/admin.directory.user',
+    'https://www.googleapis.com/auth/admin.directory.user.security'
+]
 
 def load_creds():
-    """Loads Google Workspace API credentials from environment variables."""
+    """Load Google Workspace API credentials from environment."""
     try:
         token_info = json.loads(os.environ['TOKEN_JSON'])
         creds = Credentials.from_authorized_user_info(token_info, SCOPES)
@@ -32,143 +35,143 @@ def load_creds():
         
         return creds
     except KeyError:
-        print("[ERROR] 'TOKEN_JSON' environment variable not set.")
+        logger.error("'TOKEN_JSON' environment variable not set")
         return None
     except json.JSONDecodeError:
-        print("[ERROR] 'TOKEN_JSON' contains invalid JSON.")
+        logger.error("'TOKEN_JSON' contains invalid JSON")
         return None
 
 def parse_txt(file_path):
-    """Parses a key-value text file into a dictionary."""
+    """Parse key-value text file into dictionary."""
     fields = {}
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             for line in f:
-                if not line.strip() or line.strip().startswith('#'):
+                line = line.strip()
+                if not line or line.startswith('#'):
                     continue
                 if ':' in line:
                     key, value = line.split(':', 1)
                     fields[key.strip()] = value.strip()
+        return fields
     except FileNotFoundError:
-        print(f"[ERROR] Input file not found at: {file_path}")
+        logger.error(f"Input file not found: {file_path}")
         return None
-    return fields
+    except Exception as e:
+        logger.error(f"Error parsing TXT file: {e}")
+        return None
 
 def create_user(service, user_info):
-    """
-    Creates a new Google Workspace user.
-    The password generated here is a placeholder to satisfy the API and is never used.
-    """
-    placeholder_password = generate_password()
-    
+    """Create Google Workspace user and trigger official reset email."""
+    # Validate required fields
+    required_fields = ['primaryEmail', 'givenName', 'familyName']
+    if not all(field in user_info for field in required_fields):
+        logger.error("Missing essential user information")
+        return None
+
     user_body = {
-        "primaryEmail": user_info.get('primaryEmail'),
+        "primaryEmail": user_info['primaryEmail'],
         "name": {
-            "givenName": user_info.get('givenName'),
-            "familyName": user_info.get('familyName')
+            "givenName": user_info['givenName'],
+            "familyName": user_info['familyName']
         },
-        "password": placeholder_password,
+        "password": "TemporaryPassword123!",  # Placeholder
         "changePasswordAtNextLogin": True,
-        "recoveryEmail": user_info.get('recoveryEmail'),
-        "recoveryPhone": user_info.get('recoveryPhone'),
-        "orgUnitPath": user_info.get('orgUnitPath', '/')
+        "orgUnitPath": user_info.get('orgUnitPath', '/'),
+        "recoveryEmail": user_info.get('recoveryEmail', ''),
+        "recoveryPhone": user_info.get('recoveryPhone', '')
     }
 
-    user_body_cleaned = {k: v for k, v in user_body.items() if v}
-    
-    if not all(user_body_cleaned.get(key) for key in ['primaryEmail', 'name']):
-        print("[ERROR] Missing essential user information. Cannot create user.")
-        return None
+    # Remove empty fields
+    user_body = {k: v for k, v in user_body.items() if v}
 
     try:
-        print(f"Attempting to create user: {user_body_cleaned.get('primaryEmail')}...")
-        result = service.users().insert(body=user_body_cleaned).execute()
-        print(f"Successfully created user: {result['primaryEmail']}")
-        # We only return the username, as the password is not to be used.
+        logger.info(f"Creating user: {user_info['primaryEmail']}")
+        result = service.users().insert(
+            body=user_body,
+            sendEmail=True  # Trigger Google's official welcome email
+        ).execute()
+        
+        logger.info(f"Successfully created user: {result['primaryEmail']}")
         return result['primaryEmail']
     except HttpError as e:
-        print(f"[ERROR] Failed to create user. API returned an error: {e}")
+        error_details = json.loads(e.content.decode('utf-8'))
+        logger.error(f"API Error: {error_details['error']['message']}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error creating user: {e}")
         return None
 
-def send_activation_email(to, username, given_name):
-    """Sends an email with instructions for the user to set their own password."""
-    # Note: This function no longer accepts a 'password' argument.
-    html_content = load_email_template('templates/email_template.html', {
-        'username': username,
-        'givenName': given_name
-    })
-
-    if not html_content:
-        print("[INFO] Could not load email template. Skipping email notification.")
-        return
-
+def send_custom_welcome_email(primary_email, given_name):
+    """Send supplemental welcome email with instructions."""
     try:
+        # Load HTML template
+        with open('templates/welcome_email_template.html', 'r') as f:
+            html_template = f.read()
+        
+        # Personalize content
+        html_content = html_template.replace('${givenName}', given_name)
+        
+        # Get SMTP credentials
         smtp_user = os.environ['EMAIL_SMTP_USER']
         smtp_pass = os.environ['EMAIL_SMTP_PASS']
-    except KeyError as e:
-        print(f"[ERROR] Missing environment variable for sending email: {e}. Skipping email.")
-        return
-
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = 'Activate Your New Google Workspace Account'
-    msg['From'] = smtp_user
-    msg['To'] = to
-    msg.attach(MIMEText(html_content, 'html'))
-
-    try:
-        print(f"Sending activation instructions to {to}...")
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.login(smtp_user, smtp_pass)
-        server.send_message(msg)
-        server.quit()
-        print("Email sent successfully.")
-    except smtplib.SMTPException as e:
-        print(f"[ERROR] Failed to send email. SMTP Error: {e}")
-
-def load_email_template(filepath, values):
-    """Loads an HTML email template and substitutes placeholder values."""
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            template = Template(f.read())
-        return template.substitute(values)
+        
+        # Create email
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'Your Google Workspace Account Setup'
+        msg['From'] = smtp_user
+        msg['To'] = primary_email
+        msg.attach(MIMEText(html_content, 'html'))
+        
+        # Send email
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, primary_email, msg.as_string())
+        
+        logger.info(f"Sent welcome instructions to {primary_email}")
     except FileNotFoundError:
-        print(f"[ERROR] Email template not found at: {filepath}")
-        return None
+        logger.error("Welcome email template not found")
+    except KeyError:
+        logger.warning("SMTP credentials not set - skipping supplemental email")
+    except Exception as e:
+        logger.error(f"Error sending welcome email: {e}")
 
 def main():
-    """Main function to orchestrate the user creation process."""
+    """Orchestrate user creation process."""
+    logger.info("--- Google Workspace User Provisioning Started ---")
+    
+    # Validate environment
     file_path = os.getenv('TXT_FILE')
     if not file_path:
-        print("[ERROR] Environment variable 'TXT_FILE' is not set.")
+        logger.error("'TXT_FILE' environment variable not set")
         return
     
-    print("--- Starting User Creation Script (Secure Activation Flow) ---")
+    # Process user info
     user_info = parse_txt(file_path)
     if not user_info:
         return
-
+    
     creds = load_creds()
     if not creds:
         return
-
+    
     try:
         service = build('admin', 'directory_v1', credentials=creds)
-        username = create_user(service, user_info)
+        primary_email = create_user(service, user_info)
         
-        if username:
-            send_to_email = user_info.get('EmailToSendCred')
-            given_name = user_info.get('givenName')
-            if send_to_email and given_name:
-                send_activation_email(send_to_email, username, given_name)
-            else:
-                print("[WARN] 'EmailToSendCred' or 'givenName' not found in TXT file. Cannot send activation email.")
+        if primary_email:
+            send_custom_welcome_email(
+                primary_email,
+                user_info.get('givenName', 'there')
+            )
+            logger.info(f"Provisioning completed for {primary_email}")
         else:
-            print("[INFO] User creation failed. No activation email sent.")
-    except Exception as e:
-        print(f"[FATAL_ERROR] An unexpected error occurred: {e}")
+            logger.error("User creation failed - no further actions")
     
-    print("--- Script Finished ---")
-
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+    finally:
+        logger.info("--- Process Completed ---")
 
 if __name__ == "__main__":
     main()
