@@ -1,0 +1,50 @@
+name: Auto Merge Valid TXT Requests
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  validate-and-merge:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Get list of added files only
+        id: check_files
+        run: |
+          ADDED_FILES=$(git diff --diff-filter=A --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "Added files: $ADDED_FILES"
+
+          INVALID=false
+          for file in $ADDED_FILES; do
+            if [[ "$file" != requests/*.txt ]]; then
+              INVALID=true
+              break
+            fi
+          done
+
+          echo "valid_merge=$([[ $INVALID == false ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Checkout main repo (base branch)
+        if: steps.check_files.outputs.valid_merge == 'true'
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.base_ref }}
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Setup GitHub CLI
+        if: steps.check_files.outputs.valid_merge == 'true'
+        run: |
+          sudo apt update && sudo apt install -y gh
+          echo "${{ secrets.PAT_TOKEN }}" | gh auth login --with-token
+
+      - name: Auto-merge pull request
+        if: steps.check_files.outputs.valid_merge == 'true'
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} --admin --merge --delete-branch
