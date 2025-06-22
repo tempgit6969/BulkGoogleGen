@@ -1,0 +1,7 @@
+primaryEmail: tempgit6969@a1.eaudemathematica.blog
+givenName: Tempgit6969
+familyName: 
+recoveryEmail:
+recoveryPhone:
+orgUnitPath: /
+EmailToSendCred: tempgit69@gmail.com
