@@ -1,3 +1,0 @@
-EmailToSendCred: 2tbmagic@gmail.com
-primaryEmail: atrajit123@sahkcfbahcw.work.gd
-givenName: Atrajit Sarkar123
