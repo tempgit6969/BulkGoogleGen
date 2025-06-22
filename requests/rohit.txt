@@ -9,13 +9,13 @@ Lines starting with # are ignored.
 == USER'S IDENTITY ==
 These fields define the user's name and new email address.
 The user's first name. Used in the email greeting.
-givenName: Priya
+givenName: Rohit
 
 The user's last name.
 familyName: Sharma
 
 The desired primary email address for the new user. Must be in your domain.
-primaryEmail: priya.sharma@sahkcfbahcw.work.gd
+primaryEmail: rohit.sharma@sahkcfbahcw.work.gd
 
 == ACTIVATION & RECOVERY (CRITICAL FIELDS) ==
 These fields are ESSENTIAL for the new secure workflow to succeed.
@@ -32,7 +32,7 @@ recoveryEmail: 2tbmagic@gmail.com
 The user's phone number for account recovery.
 This provides another way for Google to verify their identity.
 It MUST be in the international E.164 format (e.g., +[CountryCode][Number]).
-recoveryPhone: +919876543211
+recoveryPhone: +919332198079
 
 == ORGANIZATIONAL (OPTIONAL) ==
 This field places the user in the correct part of your organization.
