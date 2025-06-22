@@ -32,7 +32,7 @@ recoveryEmail: 2tbmagic@gmail.com
 The user's phone number for account recovery.
 This provides another way for Google to verify their identity.
 It MUST be in the international E.164 format (e.g., +[CountryCode][Number]).
-recoveryPhone: +919876543210
+recoveryPhone: +919876543211
 
 == ORGANIZATIONAL (OPTIONAL) ==
 This field places the user in the correct part of your organization.
