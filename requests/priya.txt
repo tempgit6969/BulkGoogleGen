@@ -38,4 +38,4 @@ recoveryPhone: +919876543211
 This field places the user in the correct part of your organization.
 The organizational unit to place the user in.
 If you omit this line, the user will be placed in the root OU ('/').
-orgUnitPath: /Users
+orgUnitPath: /
