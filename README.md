@@ -100,4 +100,4 @@ MIT License
 
 ---
 
-Made with ❤️ by \[Your Name / Org] — Automate your Google Workspace onboarding today!
+Made with ❤️ by [[Anshu Verma](https://github.com/anshuverma-design) — Automate your Google Workspace onboarding today!
